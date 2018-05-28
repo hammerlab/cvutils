@@ -9,6 +9,8 @@ ENV_MASK_RCNN_DIR = 'MASK_RCNN_DIR'
 
 
 def get_checkpoint_path(model_dir, epoch):
+    # Assume that checkpoints may be stored anywhere under the model directory tree but that each
+    # checkpoint file is at least identifiable by the mask_rcnn_*_{epoch}.h5 pattern
     files = glob.iglob(osp.join(model_dir, '**', 'mask_rcnn_*_{:04d}.h5'.format(epoch)), recursive=True)
     if len(files) == 0:
         raise ValueError('Failed to find checkpoint for epoch {} (model dir = {})'.format(epoch, model_dir))

@@ -4,8 +4,12 @@ from collections import namedtuple
 from skimage.draw import polygon_perimeter, polygon, ellipse
 from skimage.measure import regionprops
 import numpy as np
+import fnmatch
+import os
+import os.path as osp
 
 Annotation = namedtuple('Annotation', ['mask', 'border', 'points', 'object_type', 'bound_type', 'properties'])
+ImageInfo = namedtuple('ImageInfo', ['image_name', 'image_path', 'annot_path', 'annot_exists'])
 
 
 def parse_object(o, img_shape, mask_value=np.iinfo(np.uint8).max):
@@ -81,7 +85,7 @@ def load_annotations(path):
     annotations = []
     for o in e.findall('object'):
         try:
-            annotations.append(parse_object(o, img_shape))
+            annotations.append(parse_object(o, shape))
         except:
             print(
                 'Failed to process object {}'
@@ -91,3 +95,38 @@ def load_annotations(path):
     return shape, annotations
 
 
+DEFAULT_ANNOTATIONS_DIR = 'annotations'
+
+
+def get_annotation_path(image_path, annotations_dir=DEFAULT_ANNOTATIONS_DIR):
+    image_name = osp.basename(image_path)
+    annot_file = '.'.join(image_name.split('.')[:-1]) + '.xml'
+    return osp.join(osp.dirname(image_path), annotations_dir, annot_file)
+
+
+def list_dir(data_dir, patterns=['*.jpg', '*.jpeg', '*.png']):
+    """Summarizes a RectLabel data directory
+
+    Note that any annotated image files WITHOUT a corresponding ground-truth image will be omitted
+
+    Args:
+        data_dir: Root directory for RectLabel dataset
+        patterns: Patterns to use for identifying desired images (images are included if they match ANY pattern)
+    Returns:
+        List of ImageInfo instances with attributes image_name, image_path, annot_path, annot_exists where
+        annot_exists is False if annot_path does not exist
+    """
+    # Get all matching image files and duplicate
+    image_paths = [f for p in patterns for f in fnmatch.filter(os.listdir(data_dir), p)]
+    image_paths = list(set([osp.join(data_dir, f) for f in image_paths]))  # Use full path from data_dir
+    res = []
+    for image_path in image_paths:
+        image_name = osp.basename(image_path)
+        annot_path = get_annotation_path(image_path)
+        res.append(ImageInfo(
+            image_name=image_name,
+            image_path=image_path,
+            annot_path=annot_path,
+            annot_exists=os.path.exists(annot_path)
+        ))
+    return res
