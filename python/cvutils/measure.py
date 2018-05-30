@@ -54,7 +54,7 @@ def compare_dice(im1, im2, empty_score=1.0):
 
 
 def compare_jaccard(im1, im2):
-    """Jacard Similarity Index
+    """Jaccard Similarity Index
 
     For binary mask images, this is equivalent to accuracy (i.e. number of pixels
     in agreement divided by number of pixels)

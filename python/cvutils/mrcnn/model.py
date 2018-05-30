@@ -11,7 +11,7 @@ ENV_MASK_RCNN_DIR = 'MASK_RCNN_DIR'
 def get_checkpoint_path(model_dir, epoch):
     # Assume that checkpoints may be stored anywhere under the model directory tree but that each
     # checkpoint file is at least identifiable by the mask_rcnn_*_{epoch}.h5 pattern
-    files = glob.iglob(osp.join(model_dir, '**', 'mask_rcnn_*_{:04d}.h5'.format(epoch)), recursive=True)
+    files = glob.glob(osp.join(model_dir, '**', 'mask_rcnn_*_{:04d}.h5'.format(epoch)), recursive=True)
     if len(files) == 0:
         raise ValueError('Failed to find checkpoint for epoch {} (model dir = {})'.format(epoch, model_dir))
     if len(files) > 1:
@@ -19,17 +19,17 @@ def get_checkpoint_path(model_dir, epoch):
             'Found multiple files for epoch {} (model dir = {}) which should not be possible; files found = []'
             .format(epoch, model_dir, files)
         )
-    return osp.join(model_dir, files[0])
+    return files[0]
 
 
-def get_model(mode, config, model_dir, init_with='coco', epoch=None):
+def get_model(mode, config, model_dir, init_with='coco', epoch=None, file=None):
     if not osp.exists(model_dir):
         os.makedirs(model_dir)
     model = mrcnn_model.MaskRCNN(mode=mode, config=config, model_dir=model_dir)
-    return initialize_model(model, init_with, epoch)
+    return initialize_model(model, init_with, epoch, file)
 
 
-def initialize_model(model, init_with, epoch=None):
+def initialize_model(model, init_with, epoch=None, file=None):
     if init_with == "imagenet":
         model.load_weights(model.get_imagenet_weights(), by_name=True)
     elif init_with == "coco":
@@ -48,9 +48,15 @@ def initialize_model(model, init_with, epoch=None):
                            exclude=["mrcnn_class_logits", "mrcnn_bbox_fc",
                                     "mrcnn_bbox", "mrcnn_mask"])
     elif init_with == "epoch":
+        # Infer weights file based on epoch number
         if epoch is None:
             raise ValueError('Must set epoch parameter when loading model for a specific epoch')
-        model.load_weights(get_checkpoint_path(model.model_dir, epoch))
+        model.load_weights(get_checkpoint_path(model.model_dir, epoch), by_name=True)
+    elif init_with == "file":
+        # Initialize from specific weights file
+        if file is None:
+            raise ValueError('Must set file parameter when loading model from a specific file')
+        model.load_weights(file, by_name=True)
     elif init_with == "last":
         # Load the last model you trained and continue training
         model.load_weights(model.find_last()[1], by_name=True)
