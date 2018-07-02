@@ -6,6 +6,7 @@ import os.path as osp
 import mrcnn.model as mrcnn_model
 
 ENV_MASK_RCNN_DIR = 'MASK_RCNN_DIR'
+ENV_MASK_RCNN_CACHE_DIR = 'MASK_RCNN_CACHE_DIR'
 
 
 def get_checkpoint_path(model_dir, epoch):
@@ -36,7 +37,9 @@ def initialize_model(model, init_with, epoch=None, file=None):
 
         # Load coco weights in Mask RCNN project root as a central location to
         # avoid multiple download locations
-        path = osp.join(os.environ[ENV_MASK_RCNN_DIR], 'mask_rcnn_coco.h5')
+        cache_dir = os.getenv(ENV_MASK_RCNN_CACHE_DIR, os.environ[ENV_MASK_RCNN_DIR])
+        path = osp.join(cache_dir, 'mask_rcnn_coco.h5')
+
         # Download COCO trained weights from Releases if needed
         if not osp.exists(path):
             utils.download_trained_weights(path)
@@ -57,9 +60,6 @@ def initialize_model(model, init_with, epoch=None, file=None):
         if file is None:
             raise ValueError('Must set file parameter when loading model from a specific file')
         model.load_weights(file, by_name=True)
-    elif init_with == "last":
-        # Load the last model you trained and continue training
-        model.load_weights(model.find_last()[1], by_name=True)
     else:
         raise ValueError(
             'Initialization mode "{}" is not valid (should be one of "imagenet", "coco", "epoch" or "last")'

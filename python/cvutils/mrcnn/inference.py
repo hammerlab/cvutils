@@ -66,5 +66,6 @@ def prediction_generator(model, dataset, augmentation=None, image_ids=None, conf
             pred_scores=detection['scores'],
             true_class_ids=gt_class_id,
             true_class_names=np.array([dataset.class_names[i] for i in gt_class_id]),
+            true_rois=gt_bbox,
             true_masks=gt_mask
         )

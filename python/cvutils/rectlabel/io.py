@@ -104,7 +104,7 @@ def get_annotation_path(image_path, annotations_dir=DEFAULT_ANNOTATIONS_DIR):
     return osp.join(osp.dirname(image_path), annotations_dir, annot_file)
 
 
-def list_dir(data_dir, patterns=['*.jpg', '*.jpeg', '*.png']):
+def list_dir(data_dir, patterns=['*.jpg', '*.jpeg', '*.png', '*.tif']):
     """Summarizes a RectLabel data directory
 
     Note that any annotated image files WITHOUT a corresponding ground-truth image will be omitted

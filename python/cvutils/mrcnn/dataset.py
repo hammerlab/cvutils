@@ -58,4 +58,5 @@ class RectLabelDataset(utils.Dataset):
         # Determine class indexes for each mask
         class_ids = np.array([self.class_names.index(a.object_type) for a in annotations], dtype=np.int32)
 
+        # Return masks with shape (h, w, n_mask)
         return mask.astype(np.bool), class_ids

@@ -11,5 +11,6 @@ def get_session(gpu_fraction=0.75):
     return tf.Session(config=config)
 
 
-def init_keras_session():
-    KTF.set_session(get_session())
+def init_keras_session(gpu_fraction=0.75):
+    KTF.set_session(get_session(gpu_fraction))
+
