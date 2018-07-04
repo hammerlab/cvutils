@@ -36,22 +36,26 @@ DEFAULT_COLORS = [
 ]
 
 
-def blend_image_channels(img, mix=None, colors=DEFAULT_COLORS):
-    """Get single RGB image as blend of multiple channels
+def blend_image_channels(img, mix=None, colors=None):
+    """Get single RGB image by blending any number of image channels
 
     Args:
-        img: Image in CYX
+        img: Image in CYX or YX format (note that in YX format, this operation amounts to nothing but color conversion)
         mix: Array or list-like of length C (same as number of channels) to be multiplied by
-            each channel image in the blended result (the proportions/values given will all be rescaled to sum
-            to 1)
+            each channel image in the blended result
         colors: Array or list-like of shape (N, 3) where each 3 item row is an rgb color channel fraction in [0, 1].
             For example [1, 0, 0] would associated all values for a channel to the color red while [1, 0, 1] would
             indicate magenta (R + B).  The length of this list does not necessarily need to match the number of
             channels and if that there are not enough colors for each channel, they will be cycled indefinitely
+    Returns:
+        RGB image
     """
+    if img.ndim == 2:
+        img = img[np.newaxis]
     if img.ndim != 3:
         raise ValueError('Expecting  3 dimensions in image (image shape given = {})'.format(img.shape))
 
+    colors = DEFAULT_COLORS if colors is None else colors
     nch = img.shape[0]
     ncolor = len(colors)
 
@@ -66,10 +70,7 @@ def blend_image_channels(img, mix=None, colors=DEFAULT_COLORS):
             '(image shape given = {}, mixture proportions = {})'
             .format(img.shape, mix)
         )
-
-    # Rescale proportions to add to 1
     mix = np.array(mix)
-    mix = mix / mix.sum()
 
     nr, nc = img.shape[1], img.shape[2]
     res = np.zeros((nr, nc, 3), dtype=np.float32)
@@ -80,4 +81,53 @@ def blend_image_channels(img, mix=None, colors=DEFAULT_COLORS):
         if len(color) != 3:
             raise ValueError('Colors given should have size 3 in second dimension; colors given = {}'.format(colors))
         res = res + rgb * np.array(color) * mix[i]
-    return rescale_intensity(res, in_range='image', out_range='uint8').astype(np.uint8)
+    res = rescale_intensity(res.astype(img.dtype), in_range='dtype', out_range=np.uint8).astype(np.uint8)
+    return res
+
+
+def constrain_image_channels(img, dtype=None, ranges=None):
+    """Constrain image channels to particular ranges
+
+    Args:
+        img: Image in CYX format
+        dtype: Resulting image datatype; defaults to image dtype
+        ranges: Array with shape (C, 2) or (1, 2) where second dimension denotes range lower and upper clipping values;
+            A "None" lower or upper value indicates image minimum and maximum respectively; defaults to (None, None)
+            for each channel
+    Returns:
+        Image with same shape as input and all pixel values for channels clipped to the corresponding range
+    """
+    if img.ndim == 2:
+        img = img[np.newaxis]
+    if img.ndim != 3:
+        raise ValueError('Expecting  3 dimensions in image (image shape given = {})'.format(img.shape))
+
+    if dtype is None:
+        dtype = img.dtype
+
+    if ranges is None:
+        ranges = [[None, None]] * img.shape[0]
+    ranges = np.array(ranges)
+    if ranges.ndim == 1:
+        # Stack ranges to (C, -1) -- not sure how many items are in second axis but that is checked next
+        ranges = np.repeat(ranges[np.newaxis], img.shape[0], 0)
+
+    # Validate that ranges have length equal to num image channels and 2 values for range per channel
+    if ranges.shape[1] != 2:
+        raise ValueError('Ranges must have length 2 in second dimension (ranges shape = {})'.format(ranges.shape))
+    if ranges.shape[0] != img.shape[0]:
+        raise ValueError(
+            'Ranges must have length equal to number of image channels '
+            '(ranges shape = {}, image shape = {}'.format(ranges.shape, img.shape)
+        )
+
+    # Apply clip to each channel and restack
+    return np.stack([
+        rescale_intensity(
+            img[i], in_range=(
+                img[i].min() if ranges[i, 0] is None else ranges[i, 0],
+                img[i].max() if ranges[i, 1] is None else ranges[i, 1]
+            ), out_range=dtype
+        ).astype(dtype)
+        for i in range(img.shape[0])
+    ])
