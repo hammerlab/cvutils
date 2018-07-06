@@ -74,14 +74,22 @@ def blend_image_channels(img, mix=None, colors=None):
 
     nr, nc = img.shape[1], img.shape[2]
     res = np.zeros((nr, nc, 3), dtype=np.float32)
+
     for i in range(nch):
         # Fetch channel 2D image and reshape to YX3
         rgb = np.repeat(img[i][..., np.newaxis], repeats=3, axis=-1)
         color = colors[i % ncolor]
         if len(color) != 3:
             raise ValueError('Colors given should have size 3 in second dimension; colors given = {}'.format(colors))
-        res = res + rgb * np.array(color) * mix[i]
-    res = rescale_intensity(res.astype(img.dtype), in_range='dtype', out_range=np.uint8).astype(np.uint8)
+        res = res + (rgb * np.array(color) * mix[i])
+
+    # Clip floating point result to lower and upper bounds of resulting data type
+    # *Note that .astype actually starts overflow values back at 0, so this is necessary
+    vmin, vmax = np.iinfo(img.dtype).min, np.iinfo(img.dtype).max
+    res = rescale_intensity(
+        res.clip(vmin, vmax).astype(img.dtype),
+        in_range='dtype', out_range=np.uint8
+    ).astype(np.uint8)
     return res
 
 
@@ -124,10 +132,12 @@ def constrain_image_channels(img, dtype=None, ranges=None):
     # Apply clip to each channel and restack
     return np.stack([
         rescale_intensity(
-            img[i], in_range=(
-                img[i].min() if ranges[i, 0] is None else ranges[i, 0],
-                img[i].max() if ranges[i, 1] is None else ranges[i, 1]
-            ), out_range=dtype
+            img[i].clip(
+                -np.inf if ranges[i, 0] is None else ranges[i, 0],
+                np.inf if ranges[i, 1] is None else ranges[i, 1]
+            ),
+            in_range='image',
+            out_range=dtype
         ).astype(dtype)
         for i in range(img.shape[0])
     ])

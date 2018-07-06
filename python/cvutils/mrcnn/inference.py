@@ -6,7 +6,7 @@ import numpy as np
 Prediction = namedtuple('Prediction', [
     'image', 'image_id', 'image_info',
     'pred_class_ids', 'pred_class_names', 'pred_masks', 'pred_rois', 'pred_scores',
-    'true_class_ids', 'true_class_names', 'true_masks'
+    'true_class_ids', 'true_class_names', 'true_rois', 'true_masks'
 ])
 
 
