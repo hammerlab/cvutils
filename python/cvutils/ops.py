@@ -3,13 +3,14 @@ from skimage.exposure import rescale_intensity
 import numpy as np
 
 
-def pad_around_center(img, shape, mode='constant'):
+def pad_around_center(img, shape, mode='constant', constant_values=0):
     """Pad an image to a target shape with centering
 
     Args:
         img: Image to pad (any number of dimensions); must have size <= `shape` in all dimensions
         shape: Target shape to pad to
         mode: Padding mode (see numpy.pad)
+        constant_values: Constant value(s) used for padding when using mode 'constant' (see numpy.pad)
     """
     imgs, ts = np.array(img.shape), np.array(shape)
     if np.any(imgs > ts):
@@ -23,7 +24,45 @@ def pad_around_center(img, shape, mode='constant'):
     pad_hi = ts - imgs - pad_lo
     assert np.all(pad_hi >= 0)
     # Apply padding
-    return np.pad(img, list(zip(pad_lo, pad_hi)), mode=mode)
+    return np.pad(img, list(zip(pad_lo, pad_hi)), mode=mode, constant_values=constant_values)
+
+
+def crop_around_center(img, shape):
+    """Crop an image to a target shape around center
+
+    Args:
+
+    """
+    imgs, ts = np.array(img.shape), np.array(shape)
+    if np.any(imgs < ts):
+        raise ValueError(
+            'Cannot crop image with shape {} to target shape {} since at least one dimension is already smaller'
+            .format(imgs, ts)
+        )
+
+    crop_offset = (imgs - ts) // 2
+    assert np.all(crop_offset >= 0)
+    return img[[slice(start, start + length) for start, length in list(zip(crop_offset, shape))]]
+
+
+def resize_image_with_crop_or_pad(img, shape, **kwargs):
+    """Resize an image by cropping or padding around center (i.e. no interpolation)
+
+    Args:
+        img: Image array to resize (can have any number of dimensions but must not be scalar)
+        shape: Target shape with length equal to image.ndim
+        kwargs: Extra arguments for `pad_around_center` controlling padding mode and fill values
+    Returns:
+        Image array of same type as image but with shape `shape`
+    """
+    if img.ndim != len(shape):
+        raise ValueError(
+            'Image must have same number of dimensions as target shape (given image shape = {}, target shape = {})'
+            .format(img.shape, shape)
+        )
+    img = pad_around_center(img, np.maximum(img.shape, shape), **kwargs)
+    img = crop_around_center(img, np.minimum(img.shape, shape))
+    return img
 
 
 DEFAULT_COLORS = [
