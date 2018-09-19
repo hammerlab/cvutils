@@ -12,7 +12,7 @@ Annotation = namedtuple('Annotation', ['mask', 'border', 'points', 'object_type'
 ImageInfo = namedtuple('ImageInfo', ['image_name', 'image_path', 'annot_path', 'annot_exists'])
 
 
-def parse_object(o, img_shape, mask_value=np.iinfo(np.uint8).max):
+def parse_object(o, img_shape, mask_value=np.iinfo(np.uint8).max, assert_masks=True):
     """Parse RectLabel xml object representing a single annotation"""
     o_type = o.find('name').text
 
@@ -51,7 +51,13 @@ def parse_object(o, img_shape, mask_value=np.iinfo(np.uint8).max):
             [xmax, ymin]
         ]
     else:
-        raise ValueError('Cound not determine mask shape')
+        # Raise an error if masks are always expected
+        if assert_masks:
+            raise ValueError('Cound not determine mask shape for object with type "{}"'.format(o_type))
+        # Otherwise, return a mask-less annotation
+        else:
+            return Annotation(None, None, None, o_type, None, None)
+
 
     pts = np.array(pts)
     r, c = pts[:, 1], pts[:, 0]
@@ -70,10 +76,13 @@ def parse_object(o, img_shape, mask_value=np.iinfo(np.uint8).max):
     return Annotation(mask, border, pts, o_type, bound, props[0])
 
 
-def load_annotations(path):
+def load_annotations(path, assert_masks=True):
     """Load a RectLabel annotation file
 
     :param path: Path to RectLabel xml annotation file
+    :param assert_masks: Flag indicating that an error should be thrown if
+        a mask does not exist for an object (otherwise, only the name of the
+        object will be returned)
     :return: (shape, annotations) where:
         shape = (h, w) of annotated image
         annotations = list of Annotation objects
@@ -85,7 +94,7 @@ def load_annotations(path):
     annotations = []
     for o in e.findall('object'):
         try:
-            annotations.append(parse_object(o, shape))
+            annotations.append(parse_object(o, shape, assert_masks=assert_masks))
         except:
             print(
                 'Failed to process object {}'
