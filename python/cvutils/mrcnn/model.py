@@ -42,6 +42,7 @@ def initialize_model(model, init_with, epoch=None, file=None):
 
         # Download COCO trained weights from Releases if needed
         if not osp.exists(path):
+            os.makedirs(osp.dirname(path), exist_ok=True)
             utils.download_trained_weights(path)
 
         # Load weights trained on MS COCO, but skip layers that

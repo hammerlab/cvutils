@@ -39,23 +39,31 @@ def prediction_generator(model, dataset, augmentation=None, image_ids=None, conf
         image_ids = dataset.image_ids
 
     for image_id in image_ids:
-        image, image_meta, gt_class_id, gt_bbox, gt_mask = \
-            mrcnn_model.load_image_gt(
-                dataset, config, image_id,
-                use_mini_mask=False, augmentation=augmentation
-            )
+        image_meta, gt_class_id, gt_class_names, gt_bbox, gt_mask = [None]*5
+        try:
+            image, image_meta, gt_class_id, gt_bbox, gt_mask = \
+                mrcnn_model.load_image_gt(
+                    dataset, config, image_id,
+                    use_mini_mask=False, augmentation=augmentation
+                )
+            gt_class_names = np.array([dataset.class_names[i] for i in gt_class_id])
+        except FileNotFoundError:
+            # Catch this on failure to read annotation files and
+            # just load the original image instead
+            image = dataset.load_image(image_id)
+
         detection = model.detect([image], verbose=0)[0]
 
-        if gt_class_id.ndim != 1:
+        if gt_class_id is not None and gt_class_id.ndim != 1:
             raise ValueError('Expecting true class ids array to have ndim == 1 (shape = {})'.format(gt_class_id.shape))
-        if detection['class_ids'].ndim != 1:
-            raise ValueError \
-                ('Expecting pred class ids array to have ndim == 1 (shape = {})'.format(detection['class_ids'].shape))
-        if gt_mask.ndim != 3:
+        if gt_mask is not None and gt_mask.ndim != 3:
             raise ValueError('Expecting true masks array to have ndim == 3 (shape = {})'.format(gt_mask.shape))
+        if detection['class_ids'].ndim != 1:
+            raise ValueError(
+                'Expecting pred class ids array to have ndim == 1 (shape = {})'.format(detection['class_ids'].shape))
         if detection['masks'].ndim != 3:
-            raise ValueError \
-                ('Expecting pred masks array to have ndim == 3 (shape = {})'.format(detection['masks'].shape))
+            raise ValueError(
+                'Expecting pred masks array to have ndim == 3 (shape = {})'.format(detection['masks'].shape))
 
         yield Prediction(
             image=image, image_id=image_id, image_info=dataset.image_reference(image_id),
@@ -65,7 +73,7 @@ def prediction_generator(model, dataset, augmentation=None, image_ids=None, conf
             pred_rois=detection['rois'],
             pred_scores=detection['scores'],
             true_class_ids=gt_class_id,
-            true_class_names=np.array([dataset.class_names[i] for i in gt_class_id]),
+            true_class_names=gt_class_names,
             true_rois=gt_bbox,
             true_masks=gt_mask
         )
