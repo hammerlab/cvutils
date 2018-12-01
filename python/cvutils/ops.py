@@ -31,7 +31,9 @@ def crop_around_center(img, shape):
     """Crop an image to a target shape around center
 
     Args:
-
+        img: Single-channel image with any number of dimensions; note that centers are calculated based on length
+            along a dimension which is meaningless for RGB images
+        shape: Shape of target image (which will have the same center as original image)
     """
     imgs, ts = np.array(img.shape), np.array(shape)
     if np.any(imgs < ts):
