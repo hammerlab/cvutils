@@ -1,6 +1,9 @@
 from skimage.color import gray2rgb
 from skimage.exposure import rescale_intensity
+from cvutils import color as cvcolor
 import numpy as np
+
+DEFAULT_COLORS = list(cvcolor.COLORS.values())
 
 
 def pad_around_center(img, shape, mode='constant', constant_values=0):
@@ -65,16 +68,6 @@ def resize_image_with_crop_or_pad(img, shape, **kwargs):
     img = pad_around_center(img, np.maximum(img.shape, shape), **kwargs)
     img = crop_around_center(img, np.minimum(img.shape, shape))
     return img
-
-
-DEFAULT_COLORS = [
-    [1, 0, 0],  # Red
-    [0, 1, 0],  # Green
-    [0, 0, 1],  # Blue
-    [0, 1, 1],  # Cyan
-    [1, 0, 1],  # Magenta
-    [1, 1, 1],  # Gray
-]
 
 
 def blend_image_channels(img, mix=None, colors=None):
