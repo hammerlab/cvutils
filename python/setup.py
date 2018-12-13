@@ -15,7 +15,7 @@ if __name__ == '__main__':
             'Intended Audience :: Science/Research',
             'Programming Language :: Python'
         ],
-        install_requires=requires,
+        install_requires=[],
         packages=[
             'cvutils',
             'cvutils.augmentation',
